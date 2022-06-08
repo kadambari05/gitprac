@@ -1,0 +1,34 @@
+pipelines:
+  branches:
+    master:
+       - step:
+          name: uncrustify
+          script:
+          -echo "## Git Pre-Commit hook execution"
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+# If there are whitespace errors, print the offending file names and fail.
+#exec git diff-index --check --cached $against --
+
+##########################################################################
+## UNCRUSTIFY CONFIGURATION                                             ##
+##########################################################################
+# set uncrustify config location
+UNCRUST_CONFIG="scripts/style.cfg"
+# get list of staged files
+staged_files=$(git diff --name-only --staged | grep -i -E -- 'src' | grep -E '\.(c|h|cpp|hpp)$')
+if [ -n "$staged_files" ]; then
+	echo "## Executing uncrustify"
+    uncrustify -c $UNCRUST_CONFIG $staged_files --replace --no-backup
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    git add $staged_files
+	echo "## Style checked and changes commited"
+fi
